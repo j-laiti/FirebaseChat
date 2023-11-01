@@ -29,7 +29,7 @@ class ChatManager: ObservableObject {
     
     func sendMessage() {
         print(message)
-        
+         
         //save for sender
         //1. define path
         let document = db.collection("messages")
