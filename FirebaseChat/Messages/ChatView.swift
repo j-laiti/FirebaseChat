@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var userViewModel: UserViewModel
-    @ObservedObject var chatManager: ChatManager
+    @StateObject var chatManager: ChatManager
     
     var body: some View {
         VStack {
@@ -19,11 +19,35 @@ struct ChatView: View {
                 Text("\(userViewModel.chatUser?.username ?? "")")
             }.bold()
             
-            ScrollView {
-                ForEach(chatManager.messages, id: \.id) {message in
-                    Text(message.text)
+            ScrollViewReader {proxy in
+                ScrollView {
+                    ForEach(chatManager.messages) {message in
+                        if message.currentUserID == userViewModel.currentUser?.id {
+                            HStack {
+                                Text(message.text)
+                                    .padding()
+                                    .background(Color(.purple))
+                                    .cornerRadius(8)
+                            }
+                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .trailing)
+                        } else {
+                            HStack {
+                                Text(message.text)
+                                    .padding()
+                                    .background(Color(.blue))
+                                    .cornerRadius(8)
+                            }
+                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
+                        }
+                    }
+                }
+                .onChange(of: chatManager.lastMessageID) { id in
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .bottom)
+                    }
                 }
             }
+
             
             HStack {
                 TextField("test", text: $chatManager.message) //eventually change this to a text editor so that it scrolls up and down
@@ -36,9 +60,6 @@ struct ChatView: View {
             }
             .padding(.horizontal)
 
-        }
-        .onAppear {
-            chatManager.getMessages()
         }
     }
 }

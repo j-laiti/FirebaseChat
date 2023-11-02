@@ -14,6 +14,7 @@ class ChatManager: ObservableObject {
     @Published var message = ""
     @Published var messages: [Message] = []
     private var userViewModel: UserViewModel
+    var lastMessageID = ""
     var currentUserID: String {
         userViewModel.currentUser?.id ?? ""
     }
@@ -23,6 +24,7 @@ class ChatManager: ObservableObject {
     
     init(userViewModel: UserViewModel) {
         self.userViewModel = userViewModel
+        getMessages()
     }
     
     let db = Firestore.firestore()
@@ -37,9 +39,9 @@ class ChatManager: ObservableObject {
             .collection(recieverID)
             .document()
         //2. define data
-        let messageData = ["id": currentUserID, "toID": recieverID, "text": self.message, "timestamp": Timestamp()] as [String : Any]
+        let newMessage = ["id": "\(UUID())", "currentUserID": currentUserID, "recieverID": recieverID, "text": message, "timestamp": Date()] as [String: Any]
         //3.store data in path!
-        document.setData(messageData) { error in
+        document.setData(newMessage) { error in
             if let error = error {
                 print("failed to save message in Firestore: \(error)")
             }
@@ -51,7 +53,7 @@ class ChatManager: ObservableObject {
             .collection(currentUserID)
             .document()
     
-        recievedDocument.setData(messageData) { error in
+        recievedDocument.setData(newMessage) { error in
             if let error = error {
                 print("failed to save message in Firestore: \(error)")
             }
@@ -63,25 +65,34 @@ class ChatManager: ObservableObject {
     
     func getMessages() {
         //need to add a different route
-        db.collection("messages")
-            .document(currentUserID)
-            .collection(recieverID)
-            .addSnapshotListener { querySnapshot, error in
-            guard let documents = querySnapshot?.documents else {
-                print("error fetching document: \(String(describing: error))")
-                return
-            }
-            
-            self.messages = documents.compactMap { document -> Message? in
-                do {
-                    return try document.data(as: Message.self)
-                } catch {
-                    print("error decoding document: \(error)")
-                    return nil
+        if recieverID != "" {
+            db.collection("messages")
+                .document(currentUserID)
+                .collection(recieverID)
+                .addSnapshotListener { querySnapshot, error in
+                    guard let documents = querySnapshot?.documents else {
+                        print("error fetching document: \(String(describing: error))")
+                        return
+                    }
+                    
+                    self.messages = documents.compactMap { document -> Message? in
+                        do {
+                            print("trying to save as a Message")
+                            return try document.data(as: Message.self)
+                        } catch {
+                            print("error decoding document: \(error)")
+                            return nil
+                        }
+                    }
+                    
+                    //order messages by time
+                    self.messages.sort {$0.timestamp < $1.timestamp}
+                    
+                    //keep track of the most recent message
+                    if let id = self.messages.last?.id {
+                        self.lastMessageID = id
+                    }
                 }
-            }
-            
-            self.messages.sort {$0.timestamp < $1.timestamp}
         }
     }
 }

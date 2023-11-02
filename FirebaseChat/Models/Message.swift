@@ -8,8 +8,9 @@
 import Foundation
 
 struct Message: Identifiable, Codable {
-    var id: String //from id
-    var toID: String
+    var id: String
+    var currentUserID: String
+    var recieverID: String
     var text: String
     var timestamp: Date
 }
