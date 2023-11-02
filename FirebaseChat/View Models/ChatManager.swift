@@ -58,6 +58,8 @@ class ChatManager: ObservableObject {
                 print("failed to save message in Firestore: \(error)")
             }
         }
+        //save the most recent message in Firestore
+        saveLastMessage()
         
         //clear message after send
         self.message = ""
@@ -93,6 +95,40 @@ class ChatManager: ObservableObject {
                         self.lastMessageID = id
                     }
                 }
+        }
+    }
+    
+    private func saveLastMessage() {
+        let document = db.collection("recent_messages")
+            .document(currentUserID)
+            .collection("messages")
+            .document(recieverID)
+        
+        let lastMessage = [
+            "timestamp": Timestamp(),
+            "message": message,
+            "currentUserID": currentUserID,
+            "recieverID": recieverID
+        ] as [String : Any]
+        
+        document.setData(lastMessage) { error in
+            if let error = error {
+                print("Failed to save recent message \(error)")
+                return
+            }
+        }
+        
+        //save for the recipient
+        let document2 = db.collection("recent_messages")
+            .document(recieverID)
+            .collection("messages")
+            .document(currentUserID)
+        
+        document2.setData(lastMessage) { error in
+            if let error = error {
+                print("Failed to save recent message \(error)")
+                return
+            }
         }
     }
 }
