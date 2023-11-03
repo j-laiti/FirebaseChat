@@ -13,7 +13,8 @@ import FirebaseFirestoreSwift
 class ChatManager: ObservableObject {
     @Published var message = ""
     @Published var messages: [Message] = []
-    private var userViewModel: UserViewModel
+    @Published var recentMessages: [RecentMessage] = []
+    var userViewModel: UserViewModel
     var lastMessageID = ""
     var currentUserID: String {
         userViewModel.currentUser?.id ?? ""
@@ -21,10 +22,18 @@ class ChatManager: ObservableObject {
     var recieverID: String {
         userViewModel.chatUser?.id ?? ""
     }
+    var currentUserName: String {
+        userViewModel.currentUser?.username ?? ""
+    }
+    var recieverUsername: String {
+        userViewModel.chatUser?.username ?? ""
+    }
     
     init(userViewModel: UserViewModel) {
         self.userViewModel = userViewModel
         getMessages()
+        fetchRecentMessages()
+        print("initialised")
     }
     
     let db = Firestore.firestore()
@@ -66,36 +75,39 @@ class ChatManager: ObservableObject {
     }
     
     func getMessages() {
-        //need to add a different route
-        if recieverID != "" {
-            db.collection("messages")
-                .document(currentUserID)
-                .collection(recieverID)
-                .addSnapshotListener { querySnapshot, error in
-                    guard let documents = querySnapshot?.documents else {
-                        print("error fetching document: \(String(describing: error))")
-                        return
-                    }
-                    
-                    self.messages = documents.compactMap { document -> Message? in
-                        do {
-                            print("trying to save as a Message")
-                            return try document.data(as: Message.self)
-                        } catch {
-                            print("error decoding document: \(error)")
-                            return nil
-                        }
-                    }
-                    
-                    //order messages by time
-                    self.messages.sort {$0.timestamp < $1.timestamp}
-                    
-                    //keep track of the most recent message
-                    if let id = self.messages.last?.id {
-                        self.lastMessageID = id
+        guard !currentUserID.isEmpty, !recieverID.isEmpty else {
+                print("CurrentUserID or RecieverID is empty. Cannot fetch messages.")
+                return
+            }
+
+        db.collection("messages")
+            .document(currentUserID)
+            .collection(recieverID)
+            .addSnapshotListener { querySnapshot, error in
+                guard let documents = querySnapshot?.documents else {
+                    print("error fetching document: \(String(describing: error))")
+                    return
+                }
+                
+                self.messages = documents.compactMap { document -> Message? in
+                    do {
+                        print("trying to save as a Message")
+                        return try document.data(as: Message.self)
+                    } catch {
+                        print("error decoding document: \(error)")
+                        return nil
                     }
                 }
-        }
+                
+                //order messages by time
+                self.messages.sort {$0.timestamp < $1.timestamp}
+                
+                //keep track of the most recent message
+                if let id = self.messages.last?.id {
+                    self.lastMessageID = id
+                }
+            }
+    
     }
     
     private func saveLastMessage() {
@@ -107,8 +119,9 @@ class ChatManager: ObservableObject {
         let lastMessage = [
             "timestamp": Timestamp(),
             "message": message,
-            "currentUserID": currentUserID,
-            "recieverID": recieverID
+            "currentID": currentUserID,
+            "id": recieverID,
+            "name": recieverUsername
         ] as [String : Any]
         
         document.setData(lastMessage) { error in
@@ -123,12 +136,50 @@ class ChatManager: ObservableObject {
             .document(recieverID)
             .collection("messages")
             .document(currentUserID)
+        //need to change this eventually
+        let lastMessage2 = [
+            "timestamp": Timestamp(),
+            "message": message,
+            "id": currentUserID,
+            "currentID": recieverID,
+            "name": currentUserName
+        ] as [String : Any]
         
-        document2.setData(lastMessage) { error in
+        document2.setData(lastMessage2) { error in
             if let error = error {
                 print("Failed to save recent message \(error)")
                 return
             }
         }
+    }
+    
+    func fetchRecentMessages() {
+        guard !currentUserID.isEmpty else {
+                print("CurrentUserID is empty. Cannot fetch recent messages.")
+                return
+            }
+        
+        db.collection("recent_messages")
+            .document(currentUserID)
+            .collection("messages")
+            .addSnapshotListener { querySnapshot, error in
+                guard let documents = querySnapshot?.documents else {
+                    print("error fetching recent messages: \(String(describing: error))")
+                    return
+                }
+                
+                self.recentMessages = documents.compactMap { document -> RecentMessage? in
+                    do {
+                        print("trying to save as a Message")
+                        return try document.data(as: RecentMessage.self)
+                    } catch {
+                        print("error decoding document: \(error)")
+                        return nil
+                    }
+                }
+                
+                //order messages by time
+                self.recentMessages.sort {$1.timestamp < $0.timestamp}
+            }
     }
 }

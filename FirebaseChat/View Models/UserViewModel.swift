@@ -15,7 +15,7 @@ class UserViewModel: ObservableObject {
     @Published private(set) var currentUser: User? //saves the current user's information
     @Published var chatUser: User? //user that the current user is texting
     @Published var userExists = false
-    @Published var presentUserList = false
+    @Published var presentUserMessages = false
     
     let db = Firestore.firestore()
     
@@ -101,7 +101,7 @@ class UserViewModel: ObservableObject {
     }
 
     func presentSwap() {
-        presentUserList.toggle()
+        presentUserMessages.toggle()
     }
     
     func logout() {
@@ -109,5 +109,15 @@ class UserViewModel: ObservableObject {
         currentUser = nil
         self.userExists = false
     }
+    
+    func getUserByID(id: String, completion: @escaping (User?) -> Void) {
+        if let user = userList.first(where: { $0.id == id }) {
+            completion(user)
+        } else {
+            print("User not found in the userList")
+            completion(nil)
+        }
+    }
+
     
 }

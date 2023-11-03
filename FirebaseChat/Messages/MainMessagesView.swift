@@ -11,6 +11,7 @@ struct MainMessagesView: View {
     @State var showLogoutOptions = false
     @State var userListPresented = false
     @EnvironmentObject var userViewModel: UserViewModel
+    @StateObject var chatManager: ChatManager
     
     var body: some View {
         NavigationStack {
@@ -21,9 +22,10 @@ struct MainMessagesView: View {
                 
             }
         }
-        .navigationDestination(isPresented: $userViewModel.presentUserList) {
+        .navigationDestination(isPresented: $userViewModel.presentUserMessages) {
             ChatView(chatManager: ChatManager(userViewModel: userViewModel))
         }
+        .navigationBarBackButtonHidden(true)
     }
     
     var messageHeader: some View {
@@ -53,26 +55,43 @@ struct MainMessagesView: View {
     
     var messageList: some View {
         ScrollView {
-            ForEach(0...12, id: \.self) {profile in
-                HStack(spacing: 20) {
-                    Image(systemName: "person.circle")
-                        .font(.system(size: 30))
-                    
-                    VStack(alignment: .leading) {
-                        Text("username")
-                        Text("last message")
+
+            ForEach(chatManager.recentMessages) {message in
+                Button {
+                    //saves the chat user selected
+                    userViewModel.getUserByID(id: message.id) { user in
+                        //sets the chat user in the viewmodel
+                        userViewModel.chatUser = user
+                        
+                        //calls the chatview by toggling the bool
+                        userViewModel.presentSwap()
                     }
                     
-                    Spacer()
+                } label: {
+                    HStack(spacing: 20) {
+                        Image(systemName: "person.circle")
+                            .font(.system(size: 30))
+                        
+                        VStack(alignment: .leading) {
+                            Text(message.name)
+                            Text(message.message)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(message.timeAgo)
+                        
+                    }.padding(.horizontal)
                     
-                    Text("10m")
-                    
-                }.padding(.horizontal)
-                
-                Divider()
+                    Divider()
+
+                }
             }
         }.overlay(alignment: .bottom) {
             newMessage
+        }
+        .onAppear {
+            userViewModel.fetchUsersList()
         }
     }
     
@@ -94,7 +113,7 @@ struct MainMessagesView: View {
 
 struct MainMessagesView_Previews: PreviewProvider {
     static var previews: some View {
-        MainMessagesView()
+        MainMessagesView(chatManager: ChatManager(userViewModel: UserViewModel()))
             .environmentObject(UserViewModel(isPreview: true))
     }
 }

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var userViewModel: UserViewModel
-    @StateObject var chatManager: ChatManager
+    @ObservedObject var chatManager: ChatManager
     
     var body: some View {
         VStack {

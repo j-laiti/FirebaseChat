@@ -15,10 +15,12 @@ struct FirebaseChatApp: App {
     init() {
         FirebaseApp.configure()
     }
+
     var body: some Scene {
         WindowGroup {
             LoginView()
-                .environmentObject(UserViewModel())
+                .environmentObject(userViewModel)
         }
     }
 }
+

@@ -71,7 +71,7 @@ struct LoginView: View {
             .navigationTitle(returningUser ? "Login" : "Create Account")
             .background(Color(.init(white: 0, alpha: 0.05)))
             .navigationDestination(isPresented: $userViewModel.userExists) {
-                MainMessagesView()
+                MainMessagesView(chatManager: ChatManager(userViewModel: userViewModel))
             }
         }
     }

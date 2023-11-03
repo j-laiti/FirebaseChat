@@ -24,9 +24,9 @@ struct UserList: View {
                     Text(user.username)
                 }
             }
-            .onAppear {
-                userViewModel.fetchUsersList()
-            }
+//            .onAppear {
+//                userViewModel.fetchUsersList()
+//            }
         }
     }
 }
